@@ -1,0 +1,13 @@
+{
+  "name": "@sportslyze/config",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "tsconfig.base.json",
+    "tailwind.preset.js",
+    "tailwind.preset.d.ts"
+  ],
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}

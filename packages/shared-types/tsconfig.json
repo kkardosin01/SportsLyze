@@ -1,0 +1,7 @@
+{
+  "extends": "@sportslyze/config/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="color-scheme" content="light" />
+  <style>
+    @page { size: A4; margin: 2cm; background: #ffffff; }
+    html, body { background: #ffffff; }
+    body { font-family: "Helvetica Neue", Arial, sans-serif; color: #1a1a1a; }
+    h1 { font-size: 22px; margin-bottom: 4px; }
+    .subtitle { color: #666; font-size: 13px; margin-bottom: 24px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #e0e0e0; font-size: 12px; }
+    th { background: #f5f5f5; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
+    .footer { margin-top: 32px; font-size: 10px; color: #999; }
+  </style>
+</head>
+<body>
+  <h1>Relatório da partida — SportsLyze</h1>
+  <p class="subtitle">
+    {{ club_name }} {% if opponent_name %}x {{ opponent_name }}{% endif %}
+    — {{ match_date }} — Gerado em {{ generated_at }}
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Jogador</th>
+        <th>Distância (km)</th>
+        <th>Vel. média (km/h)</th>
+        <th>Vel. máxima (km/h)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for player in players %}
+      <tr>
+        <td>{{ player.name }}</td>
+        <td>{{ "%.2f"|format(player.distance_km) }}</td>
+        <td>{{ "%.1f"|format(player.avg_speed_kmh) }}</td>
+        <td>{{ "%.1f"|format(player.max_speed_kmh) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p class="footer">
+    Relatório gerado automaticamente pela plataforma SportsLyze a partir de análise por visão
+    computacional. Estatísticas de eventos (passes, dribles, faltas) e vinculação de jogadores
+    dependem de revisão manual quando aplicável.
+  </p>
+</body>
+</html>

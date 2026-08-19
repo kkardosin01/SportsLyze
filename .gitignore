@@ -1,0 +1,41 @@
+# Node
+node_modules/
+.next/
+dist/
+.turbo/
+.expo/
+*.tsbuildinfo
+npm-debug.log*
+pnpm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Media / artefatos de processamento local
+apps/worker/tmp/
+apps/worker/media/
+*.mp4
+*.mov
+
+# Supabase
+infra/supabase/.branches/
+infra/supabase/.temp/
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

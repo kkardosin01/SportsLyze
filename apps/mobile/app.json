@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "SportsLyze",
+    "slug": "sportslyze",
+    "scheme": "sportslyze",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": ["expo-router"],
+    "extra": {
+      "router": {
+        "origin": false
+      }
+    }
+  }
+}
