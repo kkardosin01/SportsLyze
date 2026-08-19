@@ -32,6 +32,21 @@ class DetectedPlayerRepository(SupabaseRepository):
         return result.data or []
 
 
+class PlayerMatchStatsRepository(SupabaseRepository):
+    table_name = "player_match_stats"
+
+    def get_for_player(self, video_id: str, detected_player_id: str) -> dict | None:
+        result = (
+            self._client.table(self.table_name)
+            .select("*")
+            .eq("video_id", video_id)
+            .eq("detected_player_id", detected_player_id)
+            .maybe_single()
+            .execute()
+        )
+        return result.data if result else None
+
+
 class NotificationRepository(SupabaseRepository):
     table_name = "notifications"
 

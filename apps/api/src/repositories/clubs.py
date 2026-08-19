@@ -19,7 +19,7 @@ class ClubMemberRepository(SupabaseRepository):
             .maybe_single()
             .execute()
         )
-        return result.data
+        return result.data if result else None
 
     def list_by_user(self, user_id: str) -> list[dict[str, Any]]:
         result = self._client.table(self.table_name).select("*, clubs(*)").eq("user_id", user_id).execute()

@@ -3,7 +3,12 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 
 from src.repositories.clubs import AthleteRepository
-from src.repositories.videos import AnalysisJobRepository, DetectedPlayerRepository, VideoRepository
+from src.repositories.videos import (
+    AnalysisJobRepository,
+    DetectedPlayerRepository,
+    PlayerMatchStatsRepository,
+    VideoRepository,
+)
 
 
 class JobService:
@@ -13,11 +18,13 @@ class JobService:
         video_repo: VideoRepository,
         player_repo: DetectedPlayerRepository,
         athlete_repo: AthleteRepository,
+        stats_repo: PlayerMatchStatsRepository,
     ):
         self._jobs = job_repo
         self._videos = video_repo
         self._players = player_repo
         self._athletes = athlete_repo
+        self._stats = stats_repo
 
     def get_status(self, video_id: str) -> dict:
         job = self._jobs.get_latest_for_video(video_id)
@@ -41,3 +48,11 @@ class JobService:
                 "linked_at": datetime.now(timezone.utc).isoformat(),
             },
         )
+
+    def get_player_stats(self, video_id: str, detected_player_id: str) -> dict:
+        stats = self._stats.get_for_player(video_id, detected_player_id)
+        if stats is None:
+            raise HTTPException(
+                status.HTTP_404_NOT_FOUND, "Estatísticas ainda não disponíveis para este jogador."
+            )
+        return stats

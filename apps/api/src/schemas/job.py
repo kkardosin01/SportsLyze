@@ -31,3 +31,23 @@ class DetectedPlayerOut(BaseModel):
 
 class PlayerLinkRequest(BaseModel):
     athlete_id: str
+
+
+class PlayerMatchStatsOut(BaseModel):
+    id: str
+    video_id: str
+    match_id: str | None
+    detected_player_id: str
+    athlete_id: str | None
+    touches: int
+    passes_completed: int
+    passes_attempted: int
+    dribbles_successful: int
+    dribbles_attempted: int
+    fouls_committed: int
+    fouls_suffered: int
+    shots: int
+    distance_km: float | None
+    avg_speed_kmh: float | None
+    max_speed_kmh: float | None
+    heatmap: list[list[int]] | None

@@ -11,6 +11,7 @@ from src.repositories.videos import (
     DetectedPlayerRepository,
     MatchRepository,
     NotificationRepository,
+    PlayerMatchStatsRepository,
     VideoRepository,
 )
 from src.services.club_service import ClubService
@@ -47,7 +48,11 @@ def get_video_service(
 
 def get_job_service(db: Client = Depends(get_db)) -> JobService:
     return JobService(
-        AnalysisJobRepository(db), VideoRepository(db), DetectedPlayerRepository(db), AthleteRepository(db)
+        AnalysisJobRepository(db),
+        VideoRepository(db),
+        DetectedPlayerRepository(db),
+        AthleteRepository(db),
+        PlayerMatchStatsRepository(db),
     )
 
 

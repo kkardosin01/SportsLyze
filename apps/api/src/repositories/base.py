@@ -17,7 +17,7 @@ class SupabaseRepository:
 
     def get_by_id(self, record_id: str) -> dict[str, Any] | None:
         result = self._client.table(self.table_name).select("*").eq("id", record_id).maybe_single().execute()
-        return result.data
+        return result.data if result else None
 
     def list(self, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         query = self._client.table(self.table_name).select("*")

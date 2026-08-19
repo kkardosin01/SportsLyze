@@ -5,6 +5,7 @@ import type {
   DetectedPlayer,
   Match,
   Notification,
+  PlayerMatchStats,
   Team,
 } from "@sportslyze/shared-types";
 
@@ -39,7 +40,11 @@ export class SportsLyzeClient {
 
     if (!response.ok) {
       const body = await response.json().catch(() => null);
-      throw new Error(body?.detail ?? `Erro ${response.status} ao chamar ${path}`);
+      const error = new Error(body?.detail ?? `Erro ${response.status} ao chamar ${path}`) as Error & {
+        status?: number;
+      };
+      error.status = response.status;
+      throw error;
     }
 
     return response.status === 204 ? (undefined as T) : response.json();
@@ -105,6 +110,10 @@ export class SportsLyzeClient {
       method: "POST",
       body: JSON.stringify({ athlete_id: athleteId }),
     });
+  }
+
+  getPlayerStats(videoId: string, detectedPlayerId: string) {
+    return this.request<PlayerMatchStats>(`/videos/${videoId}/players/${detectedPlayerId}/stats`);
   }
 
   // --- Relatórios ---
