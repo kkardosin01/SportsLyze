@@ -80,14 +80,16 @@ A API sobe em `http://localhost:8000` (docs em `/api/v1/docs`).
 Alternativa sem Docker (desenvolvimento com reload mais rápido):
 
 ```bash
-# API
-cd apps/api && uv pip install -e . -e ../../packages/cv-pipeline
+# API (não precisa do cv-pipeline, só o worker processa vídeo)
+cd apps/api && uv pip install -e ".[dev]"
 uv run uvicorn src.main:app --reload
 
 # Worker (outro terminal)
-cd apps/worker && uv pip install -e . -e ../../packages/cv-pipeline
+cd apps/worker && uv pip install -e ".[dev]" -e ../../packages/cv-pipeline
 uv run celery -A src.celery_app worker --loglevel=info
 ```
+
+> **macOS (Apple Silicon) fora do Docker:** o WeasyPrint (geração de PDF) depende de libs nativas (Pango/Cairo/GObject) instaláveis via `brew install pango`. Se o worker falhar com `cannot load library 'libgobject-2.0-0'`, rode com `DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib` (Homebrew não fica no dylib search path padrão nessa arquitetura). Isso não afeta os containers Docker (Linux), que já resolvem essas libs no path padrão.
 
 ### 5. Subir o web
 
