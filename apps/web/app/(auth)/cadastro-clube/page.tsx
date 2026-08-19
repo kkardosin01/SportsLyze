@@ -22,7 +22,7 @@ export default function CadastroClubePage() {
 
     try {
       const supabase = createSupabaseBrowserClient();
-      const { error: signUpError } = await supabase.auth.signUp({
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: adminEmail,
         password,
       });
@@ -35,6 +35,13 @@ export default function CadastroClubePage() {
         admin_full_name: adminName,
         admin_email: adminEmail,
       });
+
+      if (signUpData.session) {
+        // Ambiente com confirmação de e-mail desativada (ex: dev/demo local):
+        // já veio uma sessão válida, então entra direto sem esperar e-mail.
+        window.location.href = "/clube";
+        return;
+      }
 
       setStep("verifique-email");
     } catch (err) {

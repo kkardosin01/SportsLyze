@@ -18,7 +18,7 @@ export default function CadastroAtletaPage() {
     setError(null);
 
     const supabase = createSupabaseBrowserClient();
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name: fullName, user_type: "athlete" } },
@@ -29,6 +29,14 @@ export default function CadastroAtletaPage() {
       setError(signUpError.message);
       return;
     }
+
+    if (signUpData.session) {
+      // Ambiente com confirmação de e-mail desativada (ex: dev/demo local):
+      // já veio uma sessão válida, então entra direto sem esperar e-mail.
+      window.location.href = "/atleta";
+      return;
+    }
+
     setDone(true);
   }
 
