@@ -117,12 +117,19 @@ enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
-# Uncomment to configure local storage buckets
-# [storage.buckets.images]
-# public = false
-# file_size_limit = "50MiB"
-# allowed_mime_types = ["image/png", "image/jpeg"]
-# objects_path = "./images"
+# Buckets usados pela API (ver README — upload de vídeo, clipes e relatórios).
+# Todos privados; o acesso é sempre mediado pela API/RLS.
+[storage.buckets.videos]
+public = false
+file_size_limit = "8GiB"
+
+[storage.buckets.clips]
+public = false
+file_size_limit = "500MiB"
+
+[storage.buckets.reports]
+public = false
+file_size_limit = "50MiB"
 
 # Allow connections via S3 compatible clients
 [storage.s3_protocol]

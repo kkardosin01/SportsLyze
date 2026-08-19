@@ -30,6 +30,9 @@ apps/worker/media/
 *.mp4
 *.mov
 
+# Modelos baixados em runtime (YOLO, etc.)
+*.pt
+
 # Supabase
 infra/supabase/.branches/
 infra/supabase/.temp/
