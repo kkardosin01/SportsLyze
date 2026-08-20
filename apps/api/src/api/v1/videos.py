@@ -51,3 +51,12 @@ def complete_upload(
     finais e enfileira o job de processamento no worker (nunca processa
     de forma síncrona na request)."""
     return service.complete_upload(payload)
+
+
+@router.get("/{video_id}", response_model=VideoOut)
+def get_video(
+    video_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    service: VideoService = Depends(get_video_service),
+):
+    return service.get_video(video_id, user.id)

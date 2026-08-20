@@ -5,7 +5,12 @@ from src.core.celery_client import get_celery_client
 from src.core.config import Settings, get_settings
 from src.core.security import CurrentUser, get_current_user
 from src.db.session import get_supabase_admin
-from src.repositories.clubs import AthleteRepository, ClubMemberRepository, ClubRepository, TeamRepository
+from src.repositories.clubs import (
+    AthleteRepository,
+    ClubMemberRepository,
+    ClubRepository,
+    TeamRepository,
+)
 from src.repositories.videos import (
     AnalysisJobRepository,
     DetectedPlayerRepository,
@@ -22,6 +27,7 @@ from src.services.events_service import EventsService
 from src.services.job_service import JobService
 from src.services.notification_service import NotificationService
 from src.services.player_selection_service import PlayerSelectionService
+from src.services.stats_service import StatsService
 from src.services.storage import StorageService
 from src.services.video_service import VideoService
 
@@ -83,6 +89,17 @@ def get_events_service(db: Client = Depends(get_db)) -> EventsService:
     )
 
 
+def get_stats_service(db: Client = Depends(get_db)) -> StatsService:
+    return StatsService(
+        AthleteRepository(db),
+        ClubMemberRepository(db),
+        DetectedPlayerRepository(db),
+        PlayerMatchStatsRepository(db),
+        VideoRepository(db),
+        MatchRepository(db),
+    )
+
+
 CurrentUserDep = Depends(get_current_user)
 
-__all__ = ["CurrentUser", "get_current_user", "CurrentUserDep"]
+__all__ = ["CurrentUser", "CurrentUserDep", "get_current_user"]

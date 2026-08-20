@@ -1,6 +1,11 @@
 from fastapi import HTTPException, status
 
-from src.repositories.clubs import AthleteRepository, ClubMemberRepository, ClubRepository, TeamRepository
+from src.repositories.clubs import (
+    AthleteRepository,
+    ClubMemberRepository,
+    ClubRepository,
+    TeamRepository,
+)
 from src.schemas.club import ClubCreate
 from src.schemas.team import AthleteCreate, TeamCreate
 
@@ -69,3 +74,7 @@ class ClubService:
 
     def list_my_clubs(self, user_id: str) -> list[dict]:
         return self._members.list_by_user(user_id)
+
+    def list_athletes(self, club_id: str, user_id: str) -> list[dict]:
+        self.ensure_membership(club_id, user_id)
+        return self._athletes.list({"club_id": club_id})

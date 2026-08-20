@@ -39,7 +39,13 @@ def process_video(self, video_id: str, job_id: str) -> None:
         if video is None:
             raise ValueError(f"Vídeo {video_id} não encontrado.")
 
-        hint_rows = _load_selection_hints(db, video_id)
+        # Vídeo de scouting de adversário: os jogadores detectados são do
+        # time rival, então marcações manuais do coach (que sempre apontam
+        # para `athletes` do próprio clube) não fazem sentido aqui — vincular
+        # seria semanticamente errado. Eventos, estatísticas e heatmap
+        # continuam sendo calculados normalmente, só o vínculo com o elenco
+        # próprio é pulado.
+        hint_rows = [] if video["video_type"] == "adversario" else _load_selection_hints(db, video_id)
         selection_hints = [
             SelectionHint(
                 athlete_id=row["athlete_id"],

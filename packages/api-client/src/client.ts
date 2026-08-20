@@ -1,4 +1,5 @@
 import type {
+  AggregatedStats,
   AnalysisJob,
   Athlete,
   Club,
@@ -11,6 +12,7 @@ import type {
   ReferenceFrame,
   SelectionHint,
   Team,
+  Video,
 } from "@sportslyze/shared-types";
 
 export interface SportsLyzeClientOptions {
@@ -74,6 +76,14 @@ export class SportsLyzeClient {
     });
   }
 
+  listAthletes(clubId: string) {
+    return this.request<Athlete[]>(`/clubs/${clubId}/athletes`);
+  }
+
+  getAggregatedStats(athleteId: string) {
+    return this.request<AggregatedStats>(`/athletes/${athleteId}/stats/aggregated`);
+  }
+
   // --- Partidas e upload de vídeo ---
   createMatch(payload: Partial<Match>, clubId?: string) {
     const query = clubId ? `?club_id=${clubId}` : "";
@@ -101,6 +111,10 @@ export class SportsLyzeClient {
   }
 
   // --- Processamento ---
+  getVideo(videoId: string) {
+    return this.request<Video>(`/videos/${videoId}`);
+  }
+
   getJobStatus(videoId: string) {
     return this.request<AnalysisJob>(`/videos/${videoId}/job`);
   }

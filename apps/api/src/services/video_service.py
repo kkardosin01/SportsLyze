@@ -3,7 +3,11 @@ from fastapi import HTTPException, status
 
 from src.core.config import Settings
 from src.repositories.clubs import AthleteRepository, ClubMemberRepository
-from src.repositories.videos import AnalysisJobRepository, MatchRepository, VideoRepository
+from src.repositories.videos import (
+    AnalysisJobRepository,
+    MatchRepository,
+    VideoRepository,
+)
 from src.schemas.video import MatchCreate, UploadCompleteRequest, UploadInitiateRequest
 from src.services.storage import StorageService
 
@@ -94,6 +98,19 @@ class VideoService:
         )
         upload_url = self._storage.create_resumable_upload_url(storage_path)
         return video, upload_url
+
+    def get_video(self, video_id: str, user_id: str) -> dict:
+        video = self._videos.get_by_id(video_id)
+        if video is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Vídeo não encontrado.")
+
+        if video["owner_type"] == "club":
+            if self._members.find_membership(video["owner_id"], user_id) is None:
+                raise HTTPException(status.HTTP_403_FORBIDDEN, "Sem acesso a este vídeo.")
+        elif video["owner_id"] != user_id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Sem acesso a este vídeo.")
+
+        return video
 
     def complete_upload(self, payload: UploadCompleteRequest) -> dict:
         video = self._videos.get_by_id(payload.video_id)

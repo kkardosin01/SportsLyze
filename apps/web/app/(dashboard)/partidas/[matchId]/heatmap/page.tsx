@@ -1,10 +1,10 @@
 "use client";
 
 import type { DetectedPlayer, PlayerMatchStats } from "@sportslyze/shared-types";
+import { HeatmapCanvas } from "@sportslyze/ui";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createApiClient } from "@/lib/api-client";
-import { HeatmapCanvas } from "./HeatmapCanvas";
 
 /** Renderiza o heatmap (matriz de densidade) calculado a partir da
  * homografia do campo. A matriz vem de `player_match_stats.heatmap`,

@@ -4,9 +4,21 @@ from src.repositories.base import SupabaseRepository
 class MatchRepository(SupabaseRepository):
     table_name = "matches"
 
+    def list_by_ids(self, match_ids: list[str]) -> list[dict]:
+        if not match_ids:
+            return []
+        result = self._client.table(self.table_name).select("*").in_("id", match_ids).execute()
+        return result.data or []
+
 
 class VideoRepository(SupabaseRepository):
     table_name = "videos"
+
+    def list_by_ids(self, video_ids: list[str]) -> list[dict]:
+        if not video_ids:
+            return []
+        result = self._client.table(self.table_name).select("*").in_("id", video_ids).execute()
+        return result.data or []
 
 
 class AnalysisJobRepository(SupabaseRepository):
@@ -31,6 +43,10 @@ class DetectedPlayerRepository(SupabaseRepository):
         result = self._client.table(self.table_name).select("*").eq("video_id", video_id).execute()
         return result.data or []
 
+    def list_for_athlete(self, athlete_id: str) -> list[dict]:
+        result = self._client.table(self.table_name).select("*").eq("athlete_id", athlete_id).execute()
+        return result.data or []
+
 
 class PlayerMatchStatsRepository(SupabaseRepository):
     table_name = "player_match_stats"
@@ -45,6 +61,17 @@ class PlayerMatchStatsRepository(SupabaseRepository):
             .execute()
         )
         return result.data if result else None
+
+    def list_for_detected_players(self, detected_player_ids: list[str]) -> list[dict]:
+        if not detected_player_ids:
+            return []
+        result = (
+            self._client.table(self.table_name)
+            .select("*")
+            .in_("detected_player_id", detected_player_ids)
+            .execute()
+        )
+        return result.data or []
 
 
 class NotificationRepository(SupabaseRepository):

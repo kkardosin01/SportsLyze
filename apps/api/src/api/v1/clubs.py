@@ -44,3 +44,12 @@ def create_athlete(
     service: ClubService = Depends(get_club_service),
 ):
     return service.create_athlete(club_id, user.id, payload)
+
+
+@router.get("/{club_id}/athletes", response_model=list[AthleteOut])
+def list_athletes(
+    club_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    service: ClubService = Depends(get_club_service),
+):
+    return service.list_athletes(club_id, user.id)

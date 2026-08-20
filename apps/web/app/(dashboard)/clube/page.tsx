@@ -2,6 +2,7 @@
 
 import type { Athlete, Team } from "@sportslyze/shared-types";
 import { Button } from "@sportslyze/ui";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createApiClient } from "@/lib/api-client";
 
@@ -18,6 +19,11 @@ export default function ClubePage() {
       if (first) setClubId(first.id);
     });
   }, []);
+
+  useEffect(() => {
+    if (!clubId) return;
+    createApiClient().listAthletes(clubId).then(setAthletes);
+  }, [clubId]);
 
   async function handleCreateTeam(event: React.FormEvent) {
     event.preventDefault();
@@ -62,8 +68,13 @@ export default function ClubePage() {
         <h2 className="mb-4 font-semibold">Atletas</h2>
         <ul className="space-y-2">
           {athletes.map((athlete) => (
-            <li key={athlete.id} className="rounded-lg border border-gray-200 px-4 py-2 text-sm">
-              {athlete.full_name}
+            <li key={athlete.id}>
+              <Link
+                href={`/clube/atletas/${athlete.id}/estatisticas`}
+                className="block rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-brand-50"
+              >
+                {athlete.full_name}
+              </Link>
             </li>
           ))}
           {athletes.length === 0 ? (
