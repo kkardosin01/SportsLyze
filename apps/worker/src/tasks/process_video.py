@@ -8,6 +8,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from celery import shared_task
+from sportslyze_cv.events import DetectedEvent
+from sportslyze_cv.ffmpeg_utils import (
+    cut_clip,
+    extract_single_frame,
+    get_video_metadata,
+)
 from sportslyze_cv.pipeline import SelectionHint, VideoProcessingPipeline
 
 from src.core.config import get_settings
@@ -55,7 +61,10 @@ def process_video(self, video_id: str, job_id: str) -> None:
 
             result = pipeline.run(local_path, on_progress=on_progress, selection_hints=selection_hints)
 
-        _persist_results(db, video_id, result, hint_rows)
+            # Persistência fica dentro do `with` porque o corte de clipes
+            # (ver `_persist_events`) precisa do arquivo de vídeo baixado,
+            # que é apagado assim que o diretório temporário é liberado.
+            _persist_results(db, settings, video_id, result, hint_rows, local_path, tmp_dir)
 
         _update_job(
             db, job_id, status="done", current_stage="concluido", progress_pct=100, finished_at=_now()
@@ -94,7 +103,9 @@ def _load_selection_hints(db, video_id: str) -> list[dict]:
     return db.table("player_selection_hints").select("*").eq("video_id", video_id).execute().data or []
 
 
-def _persist_results(db, video_id: str, result, hint_rows: list[dict]) -> None:
+def _persist_results(
+    db, settings, video_id: str, result, hint_rows: list[dict], local_video_path: Path, tmp_dir: str
+) -> None:
     # track_id -> (athlete_id, created_by) para os hints que o pipeline
     # conseguiu casar espacialmente com um track detectado (ver
     # `PipelineResult.resolved_hints` / `_resolve_hints` no cv-pipeline).
@@ -104,6 +115,10 @@ def _persist_results(db, video_id: str, result, hint_rows: list[dict]) -> None:
         for athlete_id, track_id in result.resolved_hints.items()
         if athlete_id in created_by_athlete
     }
+
+    # track_id -> detected_players.id, para vincular os eventos (que se
+    # referem a jogadores por track_id) aos registros já persistidos.
+    track_to_detected_player_id: dict[int, str] = {}
 
     for player in result.players:
         payload = {
@@ -133,6 +148,7 @@ def _persist_results(db, video_id: str, result, hint_rows: list[dict]) -> None:
             .execute()
             .data
         )
+        track_to_detected_player_id[player.track_id] = detected["id"]
 
         db.table("player_match_stats").insert(
             {
@@ -154,6 +170,81 @@ def _persist_results(db, video_id: str, result, hint_rows: list[dict]) -> None:
                 "homography_matrix": result.homography_matrix,
             }
         ).execute()
+
+    _persist_events(
+        db, settings, video_id, result.events, track_to_detected_player_id, local_video_path, tmp_dir
+    )
+
+
+def _persist_events(
+    db,
+    settings,
+    video_id: str,
+    events: list[DetectedEvent],
+    track_to_detected_player_id: dict[int, str],
+    local_video_path: Path,
+    tmp_dir: str,
+) -> None:
+    bucket = settings.supabase_storage_bucket_clips
+
+    for event in events:
+        event_row = (
+            db.table("events")
+            .insert(
+                {
+                    "video_id": video_id,
+                    "event_type": event.event_type,
+                    "start_time_ms": event.start_time_ms,
+                    "end_time_ms": event.end_time_ms,
+                    "primary_player_id": track_to_detected_player_id.get(event.primary_track_id),
+                    "secondary_player_id": (
+                        track_to_detected_player_id.get(event.secondary_track_id)
+                        if event.secondary_track_id is not None
+                        else None
+                    ),
+                    "confidence": event.confidence,
+                }
+            )
+            .execute()
+            .data[0]
+        )
+
+        try:
+            _cut_and_upload_clip(db, bucket, video_id, event_row, event, local_video_path, tmp_dir)
+        except Exception:  # noqa: BLE001 — corte de clipe é acessório ao evento já persistido;
+            # falha ao gerar um clipe não deve derrubar o job nem impedir os demais eventos.
+            logger.exception(
+                "Falha ao gerar clipe para o evento %s do vídeo %s", event_row["id"], video_id
+            )
+
+
+def _cut_and_upload_clip(
+    db, bucket: str, video_id: str, event_row: dict, event: DetectedEvent, local_video_path: Path, tmp_dir: str
+) -> None:
+    clip_path = Path(tmp_dir) / f"clip_{event_row['id']}.mp4"
+    cut_clip(local_video_path, clip_path, event.start_time_ms, event.end_time_ms)
+
+    thumb_path = Path(tmp_dir) / f"clip_{event_row['id']}.jpg"
+    extract_single_frame(local_video_path, thumb_path, timestamp_ms=event.start_time_ms)
+
+    clip_storage_path = f"{video_id}/{event_row['id']}.mp4"
+    thumb_storage_path = f"{video_id}/{event_row['id']}.jpg"
+
+    db.storage.from_(bucket).upload(
+        clip_storage_path, clip_path.read_bytes(), {"content-type": "video/mp4", "upsert": "true"}
+    )
+    db.storage.from_(bucket).upload(
+        thumb_storage_path, thumb_path.read_bytes(), {"content-type": "image/jpeg", "upsert": "true"}
+    )
+
+    db.table("clips").insert(
+        {
+            "event_id": event_row["id"],
+            "storage_path": clip_storage_path,
+            "thumbnail_path": thumb_storage_path,
+            "duration_seconds": round(get_video_metadata(clip_path).duration_seconds),
+        }
+    ).execute()
 
 
 def _update_job(db, job_id: str, **fields) -> None:

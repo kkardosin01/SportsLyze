@@ -4,6 +4,7 @@ import type {
   Club,
   DetectedPlayer,
   Match,
+  MatchEventWithClips,
   Notification,
   PlaybackUrl,
   PlayerMatchStats,
@@ -157,6 +158,11 @@ export class SportsLyzeClient {
 
   deleteSelectionHint(videoId: string, athleteId: string) {
     return this.request<void>(`/videos/${videoId}/selection-hints/${athleteId}`, { method: "DELETE" });
+  }
+
+  // --- Eventos e clipes ---
+  listEvents(videoId: string) {
+    return this.request<MatchEventWithClips[]>(`/videos/${videoId}/events`);
   }
 
   // --- Relatórios ---

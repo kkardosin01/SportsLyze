@@ -83,3 +83,19 @@ class PlayerSelectionHintRepository(SupabaseRepository):
         self._client.table(self.table_name).delete().eq("video_id", video_id).eq(
             "athlete_id", athlete_id
         ).execute()
+
+
+class EventRepository(SupabaseRepository):
+    table_name = "events"
+
+    def list_for_video(self, video_id: str) -> list[dict]:
+        # `select("*, clips(*)")` embute os clipes de cada evento numa única
+        # consulta (join implícito via FK `clips.event_id -> events.id`).
+        result = (
+            self._client.table(self.table_name)
+            .select("*, clips(*)")
+            .eq("video_id", video_id)
+            .order("start_time_ms")
+            .execute()
+        )
+        return result.data or []

@@ -45,3 +45,10 @@ class StorageService:
         bucket = self._settings.supabase_storage_bucket_videos
         result = self._client.storage.from_(bucket).create_signed_url(storage_path, expires_in)
         return result.get("signedURL") or result.get("signed_url")
+
+    def create_signed_clip_url(self, storage_path: str, expires_in: int = 3600) -> str:
+        """URL assinada de curta duração para o frontend reproduzir um clipe
+        de evento — mesmo motivo de privacidade dos demais buckets de vídeo."""
+        bucket = self._settings.supabase_storage_bucket_clips
+        result = self._client.storage.from_(bucket).create_signed_url(storage_path, expires_in)
+        return result.get("signedURL") or result.get("signed_url")

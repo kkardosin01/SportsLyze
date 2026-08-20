@@ -1,9 +1,10 @@
-"""Orquestrador do pipeline de visão computacional — Fase 1.
+"""Orquestrador do pipeline de visão computacional — Fases 1 e 2.
 
 Etapas: extração de frames -> detecção + tracking -> homografia do campo
--> sugestão de número de camisa (OCR) -> cálculo de heatmap/distância.
-Cada etapa reporta progresso via `on_progress`, que o worker usa para
-atualizar `analysis_jobs.current_stage` / `progress_pct` no banco.
+-> detecção de eventos (heurística de posse de bola) -> sugestão de número
+de camisa (OCR) -> cálculo de heatmap/distância. Cada etapa reporta
+progresso via `on_progress`, que o worker usa para atualizar
+`analysis_jobs.current_stage` / `progress_pct` no banco.
 """
 
 import tempfile
@@ -14,6 +15,7 @@ from pathlib import Path
 import cv2
 
 from sportslyze_cv.detection import PlayerBallDetector
+from sportslyze_cv.events import DetectedEvent, EventDetector
 from sportslyze_cv.ffmpeg_utils import extract_frames, get_video_metadata
 from sportslyze_cv.homography import detect_field_corners, estimate_homography
 from sportslyze_cv.ocr import JerseyNumberOCR
@@ -64,6 +66,7 @@ class PipelineResult:
     field_calibrated: bool = False
     # athlete_id -> track_id, para os hints que encontraram correspondência
     resolved_hints: dict[str, int] = field(default_factory=dict)
+    events: list[DetectedEvent] = field(default_factory=list)
 
 
 def _iou(box_a: tuple[float, float, float, float], box_b: tuple[float, float, float, float]) -> float:
@@ -86,6 +89,7 @@ class VideoProcessingPipeline:
     def __init__(self, detect_model_path: str = "yolov8n.pt", enable_ocr: bool = True):
         self._detector = PlayerBallDetector(model_path=detect_model_path)
         self._ocr = JerseyNumberOCR() if enable_ocr else None
+        self._event_detector = EventDetector()
 
     def run(
         self,
@@ -112,6 +116,9 @@ class VideoProcessingPipeline:
             report("calibrando_campo", 72)
             homography = self._calibrate_field(first_frame, manual_field_corners)
 
+            report("detectando_eventos", 76)
+            events = self._event_detector.detect(tracked_positions, SAMPLE_FPS, homography)
+
             report("calculando_estatisticas", 80)
             movement_stats = (
                 compute_player_movement_stats(tracked_positions, homography, SAMPLE_FPS)
@@ -131,6 +138,7 @@ class VideoProcessingPipeline:
             homography_matrix=homography.to_jsonable() if homography else None,
             field_calibrated=homography is not None,
             resolved_hints=resolved_hints,
+            events=events,
         )
 
     def _resolve_hints(

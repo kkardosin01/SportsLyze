@@ -104,3 +104,11 @@ export interface Clip {
   thumbnail_path: string | null;
   duration_seconds: number | null;
 }
+
+export interface ClipWithPlaybackUrl extends Clip {
+  playback_url: string | null;
+}
+
+export interface MatchEventWithClips extends MatchEvent {
+  clips: ClipWithPlaybackUrl[];
+}
