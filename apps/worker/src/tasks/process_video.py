@@ -154,7 +154,12 @@ def _persist_results(
             .execute()
             .data
         )
-        track_to_detected_player_id[player.track_id] = detected["id"]
+        # Cobre também os track_ids originais que o pipeline fundiu neste
+        # jogador (mesmo número de camisa lido em trechos diferentes, ver
+        # `_merge_players_by_jersey`) — eventos se referem ao track_id bruto
+        # do ByteTrack, não ao representante do grupo mesclado.
+        for member_track_id in player.member_track_ids or [player.track_id]:
+            track_to_detected_player_id[member_track_id] = detected["id"]
 
         db.table("player_match_stats").insert(
             {

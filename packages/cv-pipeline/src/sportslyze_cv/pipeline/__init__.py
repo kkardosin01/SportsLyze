@@ -37,6 +37,9 @@ class PlayerResult:
     avg_speed_kmh: float
     max_speed_kmh: float
     heatmap: list[list[int]]
+    # track_ids originais do ByteTrack fundidos neste jogador (ver
+    # `_merge_players_by_jersey`) — sempre inclui pelo menos `track_id`.
+    member_track_ids: list[int] = field(default_factory=list)
 
 
 @dataclass
@@ -85,6 +88,73 @@ def _iou(box_a: tuple[float, float, float, float], box_b: tuple[float, float, fl
     return inter_area / union_area if union_area > 0 else 0.0
 
 
+def _merge_players_by_jersey(players: list[PlayerResult]) -> list[PlayerResult]:
+    """Funde `PlayerResult`s cujo número de camisa foi lido pelo OCR com
+    confiança suficiente e é idêntico — trata como o mesmo jogador físico
+    que o ByteTrack perdeu e reencontrou (oclusão longa, saída de quadro),
+    evitando duplicar "Jogador X" com estatísticas fragmentadas.
+
+    Nunca funde por suposição: só quando o OCR concorda entre os tracks
+    (`ocr_jersey_number` já vem `None` do `JerseyNumberOCR` quando a
+    confiança está abaixo do limiar configurado)."""
+    groups: dict[int, list[PlayerResult]] = {}
+    merged: list[PlayerResult] = []
+
+    for player in players:
+        if player.ocr_jersey_number is None:
+            merged.append(player)
+            continue
+        groups.setdefault(player.ocr_jersey_number, []).append(player)
+
+    for group in groups.values():
+        merged.append(group[0] if len(group) == 1 else _merge_group(group))
+
+    return merged
+
+
+def _merge_group(group: list[PlayerResult]) -> PlayerResult:
+    group = sorted(group, key=lambda p: p.track_id)
+    representative = group[0]
+    member_track_ids = sorted({track_id for p in group for track_id in p.member_track_ids})
+
+    total_distance = round(sum(p.distance_km for p in group), 3)
+    # velocidade média ponderada pela distância de cada trecho — trechos
+    # mais longos pesam mais que trechos curtos ou parados.
+    weighted_speed = (
+        sum(p.avg_speed_kmh * p.distance_km for p in group) / total_distance
+        if total_distance > 0
+        else 0.0
+    )
+    max_speed = max((p.max_speed_kmh for p in group), default=0.0)
+    best_ocr = max(group, key=lambda p: p.ocr_confidence or 0.0)
+
+    return PlayerResult(
+        track_id=representative.track_id,
+        label=representative.label,
+        ocr_jersey_number=representative.ocr_jersey_number,
+        ocr_confidence=best_ocr.ocr_confidence,
+        thumbnail_path=best_ocr.thumbnail_path,
+        distance_km=total_distance,
+        avg_speed_kmh=round(weighted_speed, 2),
+        max_speed_kmh=round(max_speed, 2),
+        heatmap=_sum_heatmaps([p.heatmap for p in group]),
+        member_track_ids=member_track_ids,
+    )
+
+
+def _sum_heatmaps(heatmaps: list[list[list[int]]]) -> list[list[int]]:
+    non_empty = [h for h in heatmaps if h]
+    if not non_empty:
+        return []
+
+    result = [list(row) for row in non_empty[0]]
+    for heatmap in non_empty[1:]:
+        for r, row in enumerate(heatmap):
+            for c, value in enumerate(row):
+                result[r][c] += value
+    return result
+
+
 class VideoProcessingPipeline:
     def __init__(self, detect_model_path: str = "yolov8n.pt", enable_ocr: bool = True):
         self._detector = PlayerBallDetector(model_path=detect_model_path)
@@ -130,6 +200,7 @@ class VideoProcessingPipeline:
             players = self._build_player_results(movement_stats, sample_crops)
 
             resolved_hints = self._resolve_hints(selection_hints, tracked_positions) if selection_hints else {}
+            resolved_hints = self._remap_hints_after_merge(resolved_hints, players)
 
         report("concluido", 100)
         return PipelineResult(
@@ -170,6 +241,21 @@ class VideoProcessingPipeline:
             if _iou(hint.bbox_xyxy, best.bbox_xyxy) >= MIN_HINT_IOU:
                 resolved[hint.athlete_id] = best.track_id
         return resolved
+
+    def _remap_hints_after_merge(
+        self, resolved_hints: dict[str, int], players: list[PlayerResult]
+    ) -> dict[str, int]:
+        """Um hint pode ter sido resolvido contra um track que depois foi
+        fundido em outro (mesmo número de camisa, ver `_merge_players_by_jersey`)
+        — remapeia para o `track_id` do jogador mesclado que sobrevive em
+        `players`, senão o vínculo do coach ficaria "órfão"."""
+        raw_to_representative = {
+            member_id: player.track_id for player in players for member_id in player.member_track_ids
+        }
+        return {
+            athlete_id: raw_to_representative.get(track_id, track_id)
+            for athlete_id, track_id in resolved_hints.items()
+        }
 
     def _track_all_frames(
         self, frame_paths: list[Path], on_progress: Callable[[int], None] | None = None
@@ -251,6 +337,7 @@ class VideoProcessingPipeline:
                     avg_speed_kmh=stats.avg_speed_kmh if stats else 0.0,
                     max_speed_kmh=stats.max_speed_kmh if stats else 0.0,
                     heatmap=stats.heatmap if stats else [],
+                    member_track_ids=[track_id],
                 )
             )
-        return results
+        return _merge_players_by_jersey(results)
