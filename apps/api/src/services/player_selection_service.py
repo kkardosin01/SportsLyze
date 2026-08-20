@@ -68,6 +68,13 @@ class PlayerSelectionService:
         frame["image_url"] = self._storage.create_signed_reference_frame_url(frame["storage_path"])
         return frame
 
+    def get_playback_url(self, video_id: str, user_id: str) -> dict:
+        video = self._get_video_with_access(video_id, user_id)
+        return {
+            "video_id": video_id,
+            "url": self._storage.create_signed_video_url(video["storage_path"]),
+        }
+
     def list_hints(self, video_id: str, user_id: str) -> list[dict]:
         self._get_video_with_access(video_id, user_id)
         return self._hints.list_for_video(video_id)

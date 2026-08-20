@@ -36,3 +36,12 @@ class StorageService:
         bucket = self._settings.supabase_storage_bucket_reference_frames
         result = self._client.storage.from_(bucket).create_signed_url(storage_path, expires_in)
         return result.get("signedURL") or result.get("signed_url")
+
+    def create_signed_video_url(self, storage_path: str, expires_in: int = 3600) -> str:
+        """URL assinada de curta duração para o frontend reproduzir o vídeo
+        original — o bucket é privado pelo mesmo motivo do frame de
+        referência. O Supabase Storage é compatível com Range Requests, então
+        essa URL funciona diretamente em um elemento <video> com seek."""
+        bucket = self._settings.supabase_storage_bucket_videos
+        result = self._client.storage.from_(bucket).create_signed_url(storage_path, expires_in)
+        return result.get("signedURL") or result.get("signed_url")

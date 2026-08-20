@@ -56,6 +56,11 @@ export interface ReferenceFrame {
   created_at: string;
 }
 
+export interface PlaybackUrl {
+  video_id: string;
+  url: string;
+}
+
 export interface SelectionHint {
   id: string;
   video_id: string;

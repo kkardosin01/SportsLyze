@@ -5,6 +5,7 @@ import type {
   DetectedPlayer,
   Match,
   Notification,
+  PlaybackUrl,
   PlayerMatchStats,
   ReferenceFrame,
   SelectionHint,
@@ -125,6 +126,10 @@ export class SportsLyzeClient {
 
   getReferenceFrame(videoId: string) {
     return this.request<ReferenceFrame>(`/videos/${videoId}/reference-frame`);
+  }
+
+  getPlaybackUrl(videoId: string) {
+    return this.request<PlaybackUrl>(`/videos/${videoId}/playback-url`);
   }
 
   listSelectionHints(videoId: string) {

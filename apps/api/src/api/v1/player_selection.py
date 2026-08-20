@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, status
 from src.api.deps import get_player_selection_service
 from src.core.security import CurrentUser, get_current_user
 from src.schemas.player_selection import (
+    PlaybackUrlOut,
     ReferenceFrameOut,
     SelectionHintCreate,
     SelectionHintOut,
@@ -30,6 +31,18 @@ def get_reference_frame(
     service: PlayerSelectionService = Depends(get_player_selection_service),
 ):
     return service.get_reference_frame(video_id, user.id)
+
+
+@router.get("/playback-url", response_model=PlaybackUrlOut)
+def get_playback_url(
+    video_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    service: PlayerSelectionService = Depends(get_player_selection_service),
+):
+    """URL assinada de curta duração para reproduzir o vídeo original no
+    player do frontend, permitindo marcar jogadores em qualquer instante do
+    vídeo (não apenas no frame de referência estático)."""
+    return service.get_playback_url(video_id, user.id)
 
 
 @router.get("/selection-hints", response_model=list[SelectionHintOut])

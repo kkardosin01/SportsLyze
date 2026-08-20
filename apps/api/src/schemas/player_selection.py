@@ -14,6 +14,11 @@ class ReferenceFrameOut(BaseModel):
     created_at: datetime
 
 
+class PlaybackUrlOut(BaseModel):
+    video_id: str
+    url: str
+
+
 class SelectionHintCreate(BaseModel):
     athlete_id: str
     timestamp_ms: int = Field(ge=0)
