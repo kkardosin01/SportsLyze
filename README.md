@@ -127,7 +127,7 @@ uv run pytest
 
 - **Fase 1 — Fundação:** auth com RLS, cadastro de clube/elenco/atletas, upload resumável, pipeline de tracking (YOLOv8 + ByteTrack), tela de revisão/associação de jogadores, heatmap e distância via homografia, notificações, relatório PDF.
 - **Fase 2 — Eventos e clipes:** heurísticas de passe/drible/falta/finalização/triangulação, corte automático de clipes, estatísticas agregadas multi-partida, scouting de adversário.
-- **Fase 3 — Refinamentos:** export em áudio/slides, melhoria de re-identificação de jogadores, paridade mobile, suporte a basquete e planos pagos.
+- **Fase 3 — Refinamentos:** export em áudio/slides, melhoria de re-identificação de jogadores, paridade mobile e planos pagos.
 
 ## Limitações conhecidas (v1)
 

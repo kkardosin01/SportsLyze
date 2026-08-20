@@ -19,7 +19,7 @@ export interface Report {
   match_id: string | null;
   athlete_id: string | null;
   format: ReportFormat;
-  storage_path: string;
   version: number;
   generated_at: string;
+  download_url: string;
 }

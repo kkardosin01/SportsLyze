@@ -10,6 +10,8 @@ import type {
   PlaybackUrl,
   PlayerMatchStats,
   ReferenceFrame,
+  Report,
+  ReportFormat,
   SelectionHint,
   Team,
   Video,
@@ -180,8 +182,15 @@ export class SportsLyzeClient {
   }
 
   // --- Relatórios ---
-  requestMatchReport(matchId: string) {
-    return this.request(`/matches/${matchId}/report`, { method: "POST" });
+  requestMatchReport(matchId: string, format: ReportFormat = "pdf") {
+    return this.request(`/matches/${matchId}/report`, {
+      method: "POST",
+      body: JSON.stringify({ format }),
+    });
+  }
+
+  listMatchReports(matchId: string) {
+    return this.request<Report[]>(`/matches/${matchId}/reports`);
   }
 
   // --- Notificações ---

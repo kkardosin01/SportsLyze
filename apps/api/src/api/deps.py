@@ -11,6 +11,7 @@ from src.repositories.clubs import (
     ClubRepository,
     TeamRepository,
 )
+from src.repositories.reports import ReportRepository
 from src.repositories.videos import (
     AnalysisJobRepository,
     DetectedPlayerRepository,
@@ -27,6 +28,7 @@ from src.services.events_service import EventsService
 from src.services.job_service import JobService
 from src.services.notification_service import NotificationService
 from src.services.player_selection_service import PlayerSelectionService
+from src.services.report_service import ReportService
 from src.services.stats_service import StatsService
 from src.services.storage import StorageService
 from src.services.video_service import VideoService
@@ -97,6 +99,17 @@ def get_stats_service(db: Client = Depends(get_db)) -> StatsService:
         PlayerMatchStatsRepository(db),
         VideoRepository(db),
         MatchRepository(db),
+    )
+
+
+def get_report_service(db: Client = Depends(get_db)) -> ReportService:
+    return ReportService(
+        MatchRepository(db),
+        AthleteRepository(db),
+        ClubMemberRepository(db),
+        ReportRepository(db),
+        StorageService(db),
+        get_celery_client(),
     )
 
 
