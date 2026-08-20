@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from celery import shared_task
-from sportslyze_cv.pipeline import VideoProcessingPipeline
+from sportslyze_cv.pipeline import SelectionHint, VideoProcessingPipeline
 
 from src.core.config import get_settings
 from src.db.session import get_supabase_admin
@@ -33,6 +33,16 @@ def process_video(self, video_id: str, job_id: str) -> None:
         if video is None:
             raise ValueError(f"Vídeo {video_id} não encontrado.")
 
+        hint_rows = _load_selection_hints(db, video_id)
+        selection_hints = [
+            SelectionHint(
+                athlete_id=row["athlete_id"],
+                timestamp_ms=row["timestamp_ms"],
+                bbox_xyxy=(row["bbox_x1"], row["bbox_y1"], row["bbox_x2"], row["bbox_y2"]),
+            )
+            for row in hint_rows
+        ]
+
         with tempfile.TemporaryDirectory(prefix="sportslyze_video_") as tmp_dir:
             local_path = _download_video(db, settings, video["storage_path"], tmp_dir)
 
@@ -43,9 +53,9 @@ def process_video(self, video_id: str, job_id: str) -> None:
             def on_progress(stage: str, pct: int) -> None:
                 _update_job(db, job_id, current_stage=stage, progress_pct=pct)
 
-            result = pipeline.run(local_path, on_progress=on_progress)
+            result = pipeline.run(local_path, on_progress=on_progress, selection_hints=selection_hints)
 
-        _persist_results(db, video_id, result)
+        _persist_results(db, video_id, result, hint_rows)
 
         _update_job(
             db, job_id, status="done", current_stage="concluido", progress_pct=100, finished_at=_now()
@@ -80,19 +90,39 @@ def _download_video(db, settings, storage_path: str, tmp_dir: str) -> Path:
     return local_path
 
 
-def _persist_results(db, video_id: str, result) -> None:
+def _load_selection_hints(db, video_id: str) -> list[dict]:
+    return db.table("player_selection_hints").select("*").eq("video_id", video_id).execute().data or []
+
+
+def _persist_results(db, video_id: str, result, hint_rows: list[dict]) -> None:
+    # track_id -> (athlete_id, created_by) para os hints que o pipeline
+    # conseguiu casar espacialmente com um track detectado (ver
+    # `PipelineResult.resolved_hints` / `_resolve_hints` no cv-pipeline).
+    created_by_athlete = {row["athlete_id"]: row["created_by"] for row in hint_rows}
+    track_to_hint = {
+        track_id: (athlete_id, created_by_athlete[athlete_id])
+        for athlete_id, track_id in result.resolved_hints.items()
+        if athlete_id in created_by_athlete
+    }
+
     for player in result.players:
-        db.table("detected_players").upsert(
-            {
-                "video_id": video_id,
-                "track_id": player.track_id,
-                "label": player.label,
-                "ocr_jersey_number": player.ocr_jersey_number,
-                "ocr_confidence": player.ocr_confidence,
-                "thumbnail_path": player.thumbnail_path,
-            },
-            on_conflict="video_id,track_id",
-        ).execute()
+        payload = {
+            "video_id": video_id,
+            "track_id": player.track_id,
+            "label": player.label,
+            "ocr_jersey_number": player.ocr_jersey_number,
+            "ocr_confidence": player.ocr_confidence,
+            "thumbnail_path": player.thumbnail_path,
+        }
+
+        hint_match = track_to_hint.get(player.track_id)
+        if hint_match is not None:
+            athlete_id, created_by = hint_match
+            payload.update(
+                {"athlete_id": athlete_id, "linked_by_user_id": created_by, "linked_at": _now()}
+            )
+
+        db.table("detected_players").upsert(payload, on_conflict="video_id,track_id").execute()
 
         detected = (
             db.table("detected_players")

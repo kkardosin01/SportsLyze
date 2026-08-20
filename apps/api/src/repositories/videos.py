@@ -56,3 +56,30 @@ class NotificationRepository(SupabaseRepository):
             query = query.is_("read_at", "null")
         result = query.order("created_at", desc=True).execute()
         return result.data or []
+
+
+class VideoReferenceFrameRepository(SupabaseRepository):
+    table_name = "video_reference_frames"
+
+    def get_for_video(self, video_id: str) -> dict | None:
+        result = (
+            self._client.table(self.table_name).select("*").eq("video_id", video_id).maybe_single().execute()
+        )
+        return result.data if result else None
+
+
+class PlayerSelectionHintRepository(SupabaseRepository):
+    table_name = "player_selection_hints"
+
+    def list_for_video(self, video_id: str) -> list[dict]:
+        result = self._client.table(self.table_name).select("*").eq("video_id", video_id).execute()
+        return result.data or []
+
+    def upsert(self, payload: dict) -> dict:
+        result = self._client.table(self.table_name).upsert(payload, on_conflict="video_id,athlete_id").execute()
+        return result.data[0]
+
+    def delete_for_athlete(self, video_id: str, athlete_id: str) -> None:
+        self._client.table(self.table_name).delete().eq("video_id", video_id).eq(
+            "athlete_id", athlete_id
+        ).execute()

@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     supabase_storage_bucket_videos: str = "videos"
     supabase_storage_bucket_clips: str = "clips"
     supabase_storage_bucket_reports: str = "reports"
+    supabase_storage_bucket_reference_frames: str = "reference-frames"
 
     # Fila
     redis_url: str = "redis://localhost:6379/0"

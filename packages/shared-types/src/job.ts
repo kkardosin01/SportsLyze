@@ -45,6 +45,32 @@ export interface PlayerMatchStats {
   heatmap: number[][] | null;
 }
 
+export interface ReferenceFrame {
+  id: string;
+  video_id: string;
+  storage_path: string;
+  image_url: string;
+  timestamp_ms: number;
+  frame_width: number;
+  frame_height: number;
+  created_at: string;
+}
+
+export interface SelectionHint {
+  id: string;
+  video_id: string;
+  athlete_id: string;
+  timestamp_ms: number;
+  bbox_x1: number;
+  bbox_y1: number;
+  bbox_x2: number;
+  bbox_y2: number;
+  frame_width: number;
+  frame_height: number;
+  created_by: string;
+  created_at: string;
+}
+
 export type EventType =
   | "passe"
   | "drible"

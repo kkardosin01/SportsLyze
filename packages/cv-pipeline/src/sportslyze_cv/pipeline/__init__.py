@@ -38,11 +38,48 @@ class PlayerResult:
 
 
 @dataclass
+class SelectionHint:
+    """Marcação manual do coach: 'este bbox, neste instante, é este atleta'.
+    Usada como prior espacial para pré-vincular um track — nunca como
+    substituto de número de camisa."""
+
+    athlete_id: str
+    timestamp_ms: int
+    bbox_xyxy: tuple[float, float, float, float]
+
+
+# IoU mínimo para aceitar a resolução de um hint contra um track detectado.
+# Abaixo disso a marcação do coach não bate com nenhuma detecção próxima o
+# suficiente (frame de referência divergente da detecção, jogador fora de
+# quadro no instante indicado etc.) — melhor não vincular do que vincular
+# errado; o coach ainda pode corrigir manualmente na revisão pós-análise.
+MIN_HINT_IOU = 0.3
+
+
+@dataclass
 class PipelineResult:
     duration_seconds: float
     players: list[PlayerResult] = field(default_factory=list)
     homography_matrix: list[list[float]] | None = None
     field_calibrated: bool = False
+    # athlete_id -> track_id, para os hints que encontraram correspondência
+    resolved_hints: dict[str, int] = field(default_factory=dict)
+
+
+def _iou(box_a: tuple[float, float, float, float], box_b: tuple[float, float, float, float]) -> float:
+    ax1, ay1, ax2, ay2 = box_a
+    bx1, by1, bx2, by2 = box_b
+
+    inter_x1, inter_y1 = max(ax1, bx1), max(ay1, by1)
+    inter_x2, inter_y2 = min(ax2, bx2), min(ay2, by2)
+    inter_area = max(0.0, inter_x2 - inter_x1) * max(0.0, inter_y2 - inter_y1)
+    if inter_area == 0:
+        return 0.0
+
+    area_a = max(0.0, ax2 - ax1) * max(0.0, ay2 - ay1)
+    area_b = max(0.0, bx2 - bx1) * max(0.0, by2 - by1)
+    union_area = area_a + area_b - inter_area
+    return inter_area / union_area if union_area > 0 else 0.0
 
 
 class VideoProcessingPipeline:
@@ -55,6 +92,7 @@ class VideoProcessingPipeline:
         video_path: str | Path,
         on_progress: ProgressCallback | None = None,
         manual_field_corners: list[tuple[float, float]] | None = None,
+        selection_hints: list[SelectionHint] | None = None,
     ) -> PipelineResult:
         video_path = Path(video_path)
         report = lambda stage, pct: on_progress and on_progress(stage, pct)  # noqa: E731
@@ -84,13 +122,46 @@ class VideoProcessingPipeline:
             report("sugerindo_numeros", 90)
             players = self._build_player_results(movement_stats, sample_crops)
 
+            resolved_hints = self._resolve_hints(selection_hints, tracked_positions) if selection_hints else {}
+
         report("concluido", 100)
         return PipelineResult(
             duration_seconds=metadata.duration_seconds,
             players=players,
             homography_matrix=homography.to_jsonable() if homography else None,
             field_calibrated=homography is not None,
+            resolved_hints=resolved_hints,
         )
+
+    def _resolve_hints(
+        self, hints: list[SelectionHint], tracked_positions: list[TrackedObject]
+    ) -> dict[str, int]:
+        """Para cada hint (marcação manual do coach), acha o track detectado
+        mais próximo espacialmente no frame amostrado mais perto do
+        timestamp indicado, usando IoU — prior espacial, não identidade por
+        número de camisa."""
+        resolved: dict[str, int] = {}
+        for hint in hints:
+            frame_index = round(hint.timestamp_ms / 1000 * SAMPLE_FPS)
+            candidates = [
+                obj
+                for obj in tracked_positions
+                if obj.detection_class == "player" and obj.frame_index == frame_index
+            ]
+            if not candidates:
+                # Sem detecção exatamente nesse frame amostrado — tenta o mais próximo disponível.
+                candidates = [obj for obj in tracked_positions if obj.detection_class == "player"]
+                if not candidates:
+                    continue
+                closest_index = min(
+                    (obj.frame_index for obj in candidates), key=lambda idx: abs(idx - frame_index)
+                )
+                candidates = [obj for obj in candidates if obj.frame_index == closest_index]
+
+            best = max(candidates, key=lambda obj: _iou(hint.bbox_xyxy, obj.bbox_xyxy))
+            if _iou(hint.bbox_xyxy, best.bbox_xyxy) >= MIN_HINT_IOU:
+                resolved[hint.athlete_id] = best.track_id
+        return resolved
 
     def _track_all_frames(
         self, frame_paths: list[Path], on_progress: Callable[[int], None] | None = None

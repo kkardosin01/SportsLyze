@@ -72,6 +72,32 @@ def extract_frames(
     return sorted(output_dir.glob("frame_*.jpg"))
 
 
+def extract_single_frame(
+    video_path: str | Path, output_path: str | Path, timestamp_ms: int = 0
+) -> Path:
+    """Extrai um único frame do vídeo no timestamp informado — usado para o
+    frame de referência da seleção manual de jogador (marcação de bbox antes
+    da análise completa). `-ss` antes de `-i` faz o ffmpeg buscar
+    diretamente o timestamp (seek rápido), evitando decodificar o vídeo
+    inteiro."""
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    subprocess.run(
+        [
+            "ffmpeg", "-y",
+            "-ss", str(timestamp_ms / 1000),
+            "-i", str(video_path),
+            "-frames:v", "1",
+            "-qscale:v", "2",
+            str(output_path),
+        ],
+        capture_output=True,
+        check=True,
+    )
+    return output_path
+
+
 def cut_clip(
     video_path: str | Path, output_path: str | Path, start_ms: int, end_ms: int, padding_ms: int = 1000
 ) -> Path:

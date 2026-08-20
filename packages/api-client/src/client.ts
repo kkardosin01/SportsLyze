@@ -6,6 +6,8 @@ import type {
   Match,
   Notification,
   PlayerMatchStats,
+  ReferenceFrame,
+  SelectionHint,
   Team,
 } from "@sportslyze/shared-types";
 
@@ -114,6 +116,42 @@ export class SportsLyzeClient {
 
   getPlayerStats(videoId: string, detectedPlayerId: string) {
     return this.request<PlayerMatchStats>(`/videos/${videoId}/players/${detectedPlayerId}/stats`);
+  }
+
+  // --- Seleção manual de jogador ---
+  requestReferenceFrame(videoId: string) {
+    return this.request<void>(`/videos/${videoId}/reference-frame`, { method: "POST" });
+  }
+
+  getReferenceFrame(videoId: string) {
+    return this.request<ReferenceFrame>(`/videos/${videoId}/reference-frame`);
+  }
+
+  listSelectionHints(videoId: string) {
+    return this.request<SelectionHint[]>(`/videos/${videoId}/selection-hints`);
+  }
+
+  createSelectionHint(
+    videoId: string,
+    payload: {
+      athlete_id: string;
+      timestamp_ms: number;
+      bbox_x1: number;
+      bbox_y1: number;
+      bbox_x2: number;
+      bbox_y2: number;
+      frame_width: number;
+      frame_height: number;
+    },
+  ) {
+    return this.request<SelectionHint>(`/videos/${videoId}/selection-hints`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  deleteSelectionHint(videoId: string, athleteId: string) {
+    return this.request<void>(`/videos/${videoId}/selection-hints/${athleteId}`, { method: "DELETE" });
   }
 
   // --- Relatórios ---

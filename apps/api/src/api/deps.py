@@ -12,11 +12,14 @@ from src.repositories.videos import (
     MatchRepository,
     NotificationRepository,
     PlayerMatchStatsRepository,
+    PlayerSelectionHintRepository,
+    VideoReferenceFrameRepository,
     VideoRepository,
 )
 from src.services.club_service import ClubService
 from src.services.job_service import JobService
 from src.services.notification_service import NotificationService
+from src.services.player_selection_service import PlayerSelectionService
 from src.services.storage import StorageService
 from src.services.video_service import VideoService
 
@@ -58,6 +61,18 @@ def get_job_service(db: Client = Depends(get_db)) -> JobService:
 
 def get_notification_service(db: Client = Depends(get_db)) -> NotificationService:
     return NotificationService(NotificationRepository(db))
+
+
+def get_player_selection_service(db: Client = Depends(get_db)) -> PlayerSelectionService:
+    return PlayerSelectionService(
+        VideoRepository(db),
+        VideoReferenceFrameRepository(db),
+        PlayerSelectionHintRepository(db),
+        AthleteRepository(db),
+        ClubMemberRepository(db),
+        StorageService(db),
+        get_celery_client(),
+    )
 
 
 CurrentUserDep = Depends(get_current_user)

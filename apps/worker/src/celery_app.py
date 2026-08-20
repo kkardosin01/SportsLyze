@@ -11,6 +11,7 @@ celery_app = Celery(
     backend=settings.redis_url,
     include=[
         "src.tasks.process_video",
+        "src.tasks.reference_frame",
         "src.tasks.generate_report",
         "src.tasks.notifications",
         "src.tasks.cleanup",
